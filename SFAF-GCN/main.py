@@ -12,7 +12,7 @@ import random
 from scipy import interp
 import os
 from matplotlib import pyplot as plt
-parser = argparse.ArgumentParser(description='BN-GNN')
+parser = argparse.ArgumentParser(description='SFAF-GCN')
 parser.add_argument('--dataset', type=str, default="ADNI")
 parser.add_argument('--view', type=str, default="DTI")
 parser.add_argument('--action_num', type=int, default=2)
@@ -23,7 +23,7 @@ parser.add_argument('--out_dim', type=int, default=2)
 parser.add_argument('--dropout', type=float, default=0.3)
 parser.add_argument('--slope', type=float, default=0.2)
 parser.add_argument('--lr', type=float, default=0.005) 
-parser.add_argument('--weight_decay', type=float, default=0.0001)
+parser.add_argument('--weight_decay', type=float, default=0.001)
 parser.add_argument('--gnn_type', type=str, default='GCN')
 parser.add_argument('--repeats', type=int, default=1)
 parser.add_argument('--max_timesteps', type=int, default=2000)
