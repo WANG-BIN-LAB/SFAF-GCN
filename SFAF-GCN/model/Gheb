@@ -1,0 +1,215 @@
+	def forward(self, input):
+		action, index = input
+		predict_array = np.empty((len(index), 18))
+		features0 = self.features0[index]#294,90.90fmri的初始特征
+		features1 = self.features1[index]#294,90.30smri的初始特征
+		adj = self.adjs[index]#fgraph
+		
+        features0 = self.fc4(features0,adj)#对FC进行卷积
+		features0 = self.leaky_relu(features0)
+		features0 = self.dropout(features0)#换成功能以后得到一个卷积层后的功能特征，后续将该功能特征与结构特征融合进而输入到下一个卷积层294,90,64
+        #将卷积得到的两个特征进行拼接
+		features_all = torch.cat((features0, features1),axis=-1)#294,90,94(64+30)
+        if action == 1:
+			features = self.fc2(features_all,edge_index)
+			features = self.leaky_relu(features)
+			features = self.dropout(features)#294，90，32
+		
+			if len(features.shape) < 3:
+			
+				predict_array.append(predict)
+			else:
+				
+				predict = np.reshape(features.detach().numpy(), (len(index), -1))
+
+				predict= torch.Tensor(predict)
+            	# individual_names = ['individual_' + str(idx) for idx in index]  # 假设个体名称为'individual_' + 索引
+				# for i, name in enumerate(individual_names):
+				# 	file_path = os.path.join('./result/', name + '.npy')
+				# 	np.save(file_path, predict[i])
+				# predict = torch.as_tensor(predict, dtype=torch.float32)
+
+				# predict = features.view(-1)
+				# predict = torch.mean(features, dim=1)
+				
+				# np.save('./result/'+ str(len(index))+'.npy', predict.detach().numpy())
+				# predict_array.append(predict)
+				# Standardization 标准化
+            predict1 = self.classifier2(predict)
+            # # features2 = predict1
+            predict1 = F.log_softmax(predict1, dim=1)#二维数组
+		return features,predict1
+
+
+
+    ############################################################################原始forward函数##########################################################
+    	def forward(self, input):
+		action, index = input
+		predict_array = np.empty((len(index), 18))
+		features0 = self.features0[index]#294,90.90fmri的初始特征
+		features1 = self.features1[index]#294,90.30smri的初始特征
+		adj = self.adjs[index]#fgraph
+		
+		net_num, n_num, n_num = adj.shape
+		edge_index_list = [] 
+		graph_representations = []
+		for i in range(net_num): 
+			adj_i = adj[i]
+			row, col = torch.nonzero(adj_i, as_tuple=False).t()
+			edge_index = torch.stack([row, col], dim=0)
+			edge_index_list.append(edge_index)  
+		
+			# corr_matrix_smri = torch.empty(len(adj), 90, 90)  
+			# for i in range(features1.size(0)):
+			# 	corr_matrix = torch.corrcoef(features0[1])
+			# 	corr_matrix_smri[i] = corr_matrix
+			# adj_smri = corr_matrix_smri#sgraph
+			# adj_smri=self.adj_process(adj_smri)#294,90,90
+			features0 = self.fc4(features0,adj)#对FC进行卷积
+			features0 = self.leaky_relu(features0)
+			features0 = self.dropout(features0)#换成功能以后得到一个卷积层后的功能特征，后续将该功能特征与结构特征融合进而输入到下一个卷积层294,90,64
+			# features1 = self.fc0(features1,adj_smri)#对SC进行卷积
+			# features1 = self.leaky_relu(features1)
+			#将卷积得到的两个特征进行拼接
+			features_all = torch.cat((features0, features1),axis=-1)#294,90,94(64+30)
+			# corr_matrix_concat = torch.empty(len(adj), 90, 90)  
+			#生成90，30对应的图
+			# features_all = torch.cat((features0, features1),axis=-1)#294,90,94(64+30)
+			corr_matrix_smri= torch.empty(len(adj), 90, 90) 
+			for i in range(features0.size(0)):
+				corr_matrix = torch.corrcoef(features0[1])
+				corr_matrix_smri[i] = corr_matrix
+			adj_concat = corr_matrix_smri#concatgraph
+			adj_concat=self.adj_process(adj_concat,15)#294,90,90
+			if action == 1:
+			# 	# extra_channels = np.zeros((294, 90, 34))
+			# 	# features1 = np.concatenate((features1, extra_channels), axis=2)#294, 90, 64
+			# 	features1=torch.FloatTensor(features1)
+			# 	result = torch.cat((features0, features1),axis=-1)#294, 90, 94
+			# 	corr_matrix = torch.empty(len(adj), 90, 90)  
+			# # 遍历每个样本  
+			# 	for i in range(result.size(0)):  
+			# # 获取当前样本的所有二维切片  
+			# 		slices = result[i]  
+			# # 遍历每个二维切片（除了自身）  
+			# 		for j in range(slices.size(0)):  
+			# 			for k in range(slices.size(0)):  
+			# 				if j != k:  # 排除自身与自身的比较  
+			#         # 计算两个二维切片之间的皮尔逊相关性  
+			#         # 将torch张量转换为numpy数组进行计算  
+			# 					# corr, _ = pearsonr(slices[j].numpy().ravel(), slices[k].numpy().ravel())  
+			# 					corr, _ = pearsonr(slices[j].detach().numpy().ravel(), slices[k].detach().numpy().ravel())
+			#         # 将结果存储在对应的位置  
+			# 					corr_matrix[i, j, k] = corr  
+			# 				else:  
+			#         # 对于对角线元素，可以设置为1（完美相关性）或NaN（表示无意义）  
+			# 					corr_matrix[i, j, k] = float('1.0')  # 或者 1.0，如果你想要表示完美相关性 
+			# 	adj=corr_matrix
+			# 	adj=self.adj_proce
+			# ss(adj)
+			# 	features = self.fc2(result,adj)
+				# edge_indices_all=self.adj_to_edge_indices(adj)
+				# edge_indices = [edge_indices_all[i] for i in index]
+				features = self.fc2(features_all,edge_index)
+			
+				# features = self.fc2(features_all,adj)
+			# 	# features2 = features
+				features = self.leaky_relu(features)
+				features = self.dropout(features)#294，90，32
+			# 	features2 = features
+			# 	# 使用 ModuleSERO  
+			# 	# output, attention_weights = self.garo_layer(features, node_axis=1)
+			# 	# output, attention_weights = self.sero_layer(features, node_axis=1)#90,32  294,90
+			# elif action == 2:
+			# 	features = self.fc2(features,adj)
+			# 	features = self. leaky_relu(features)
+			# 	features = self.dropout(features)
+			# 	features = self.fc3(features,adj)
+			# 	features = self.leaky_relu(features)
+			# 	features = self.dropout(features)
+			if len(features.shape) < 3:
+			# if len(features_all.shape) < 3:
+				# predict = np.reshape(features.detach().numpy(), (len(index), -1))
+				# predict= torch.Tensor(predict)
+				# # predict = features.view(-1)
+				# # predict = torch.mean(features,dim=0).unsqueeze(0)
+				# # np.save('./result/'+ '.npy', predict)
+				predict_array.append(predict)
+			else:
+				# predict = self.classifier( features,adj)
+				# np.save('./result/'+ '.npy', predict)
+				predict = np.reshape(features.detach().numpy(), (len(index), -1))
+				# predict = np.reshape(features_all.detach().numpy(), (len(index), -1))
+				# predict = np.reshape(output.detach().numpy(), (len(index), -1))#294.2880
+				# predict = output.detach().numpy().reshape(-1, output.shape[-1])
+				predict= torch.Tensor(predict)
+				graph_representations.append(predict)
+# 				predictions.append(x)
+# 		# 聚合所有图的节点表示到图级别的表示
+		graph_level_representations = torch.stack(graph_representations, dim=0)  
+#       	# 将图级别的表示输入到分类器中  
+		graph_predictions = self.classifier2(graph_level_representations)
+#   		# 遍历 DataLoader 中的每个批次（在这种情况下，每个批次是一个图） 
+		return features0,F.log_softmax(graph_predictions, dim=1)
+				# individual_names = ['individual_' + str(idx) for idx in index]  # 假设个体名称为'individual_' + 索引
+				# for i, name in enumerate(individual_names):
+				# 	file_path = os.path.join('./result/', name + '.npy')
+				# 	np.save(file_path, predict[i])
+				# predict = torch.as_tensor(predict, dtype=torch.float32)
+
+				# predict = features.view(-1)
+				# predict = torch.mean(features, dim=1)
+				
+				# np.save('./result/'+ str(len(index))+'.npy', predict.detach().numpy())
+				# predict_array.append(predict)
+				# Standardization 标准化
+		# batch_size, out_dim = predict.shape
+		# standard_scaler = StandardScaler() # 定义标准化器
+		# predict_standard = standard_scaler.fit_transform(predict.reshape(-1, out_dim)) # 对 predict 进行标准化
+		# predict_standard = predict_standard.reshape(batch_size, out_dim) # 将标准化后的数据还原成原始形状
+		# predict_standard = torch.as_tensor(predict_standard, dtype=torch.float32)
+		# predict = self.classifier2(predict_standard)
+		# predict1 = self.classifier2(predict)
+		# # features2 = predict1
+		# predict1 = F.log_softmax(predict1, dim=1)#二维数组
+		# return features,predict1
+        ###################################################ChebConv1 forward函数##########################################
+        def forward(self, input):
+		action, index = input
+		predict_array = np.empty((len(index), 18))
+		features0 = self.features0[index]#294,90.90fmri的初始特征
+		features1 = self.features1[index]#294,90.30smri的初始特征
+		adj = self.adjs[index]#fgraph
+		
+		net_num, n_num, n_num = adj.shape
+		edge_index_list = [] 
+		graph_representations = []
+
+		features0 = self.fc4(features0,adj)#对FC进行卷积
+		features0 = self.leaky_relu(features0)
+		features0 = self.dropout(features0)#换成功能以后得到一个卷积层后的功能特征，后续将该功能特征与结构特征融合进而输入到下一个卷积层294,90,64
+        #将卷积得到的两个特征进行拼接
+		features_all = torch.cat((features0, features1),axis=-1)#294,90,94(64+30)
+		if action == 1:
+			for i in range(net_num): 
+				adj_i = adj[i]
+				row, col = torch.nonzero(adj_i, as_tuple=False).t()
+				edge_index = torch.stack([row, col], dim=0)
+				edge_index_list.append(edge_index)  
+				features = self.fc2(features_all,edge_index)
+				# features = self.fc2(features_all,adj)
+			# 	# features2 = features
+				features = self.leaky_relu(features)
+				features = self.dropout(features)#294，90，32
+			if len(features.shape) < 3:
+				predict_array.append(predict)
+			else:
+				predict = np.reshape(features.detach().numpy(), (len(index), -1))
+				predict= torch.Tensor(predict)
+				graph_representations.append(predict)
+# 		# 聚合所有图的节点表示到图级别的表示
+		graph_level_representations = torch.stack(graph_representations, dim=0)  
+#       	# 将图级别的表示输入到分类器中  
+		graph_predictions = self.classifier2(predict)
+#   		# 遍历 DataLoader 中的每个批次（在这种情况下，每个批次是一个图） 
+		return features0,F.log_softmax(graph_predictions, dim=1)
